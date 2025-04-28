@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import streamlit as st
 from PIL import Image, ExifTags
+import io
 
 # Function to correct image orientation using EXIF metadata
 def correct_orientation(image):
@@ -28,14 +29,15 @@ color_blindness_matrices = {
     "Protanopia (Red-Blind)": np.array([[0.567, 0.433, 0],
                                         [0.558, 0.442, 0],
                                         [0, 0.242, 0.758]]),
-
     "Deuteranopia (Green-Blind)": np.array([[0.625, 0.375, 0],
                                             [0.7, 0.3, 0],
                                             [0, 0.3, 0.7]]),
-
     "Tritanopia (Blue-Blind)": np.array([[0.95, 0.05, 0],
                                          [0, 0.433, 0.567],
-                                         [0, 0.475, 0.525]])
+                                         [0, 0.475, 0.525]]),
+    "Achromatopsia (Total Color Blindness)": np.array([[0.299, 0.587, 0.114],
+                                                       [0.299, 0.587, 0.114],
+                                                       [0.299, 0.587, 0.114]])
 }
 
 # Function to simulate color blindness
@@ -92,4 +94,15 @@ if uploaded_file is not None:
             st.image(simulated_image, caption=f"{blindness_type} (Simulated)", width=display_width)
 
         with col2:
-            st.image(corrected_image, caption=f"{blindness_type} (Original)", width=display_width)
+            st.image(corrected_image, caption=f"{blindness_type} (Corrected)", width=display_width)
+
+        # Convert corrected image to downloadable format
+        corrected_pil = Image.fromarray(corrected_image)
+        img_byte_arr = io.BytesIO()
+        corrected_pil.save(img_byte_arr, format='PNG')
+        img_byte_arr = img_byte_arr.getvalue()
+
+        st.download_button(label="Download Corrected Image", 
+                           data=img_byte_arr, 
+                           file_name="corrected_image.png", 
+                           mime="image/png")
