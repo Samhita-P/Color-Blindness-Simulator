@@ -60,14 +60,20 @@ color_blindness_matrices = {
 
 # Function to simulate color blindness
 def simulate_color_blindness(image, matrix):
-    img_float = np.array(image).astype(float) / 255.0
+    if image.shape[2] == 4:
+        image = image[:, :, :3]  # Remove alpha channel if present
+
+    img_float = image.astype(float) / 255.0
     simulated = np.dot(img_float, matrix.T)
     simulated = np.clip(simulated, 0, 1)
     return (simulated * 255).astype(np.uint8)
 
 # Function to apply Daltonization correction
 def apply_correction(simulated, matrix):
-    correction_matrix = np.linalg.pinv(matrix)  # Compute pseudo-inverse
+    if simulated.shape[2] == 4:
+        simulated = simulated[:, :, :3]
+
+    correction_matrix = np.linalg.pinv(matrix)
     corrected = np.dot(simulated.astype(float) / 255.0, correction_matrix.T)
     corrected = np.clip(corrected, 0, 1)
     return (corrected * 255).astype(np.uint8)
@@ -82,19 +88,14 @@ st.write("Upload an image to simulate different types of color blindness and see
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Convert uploaded image to OpenCV format
-    image = Image.open(uploaded_file)
-    image = correct_orientation(image)  # Fix EXIF rotation issues
+    # Open image using PIL and ensure RGB (remove alpha if present)
+    image = Image.open(uploaded_file).convert("RGB")
+    image = correct_orientation(image)
     image_np = np.array(image)
 
-    # Ensure horizontal layout
-    img_width, img_height = image.size
-    if img_width > img_height:
-        display_width = 500  # Wider display for horizontal images
-    else:
-        display_width = 350  # Smaller display for vertical images
-
     # Display Original Image
+    img_width, img_height = image.size
+    display_width = 500 if img_width > img_height else 350
     st.image(image_np, caption="Original Image", width=display_width)
 
     # Select Color Blindness Type
@@ -105,11 +106,9 @@ if uploaded_file is not None:
         simulated_image = simulate_color_blindness(image_np, matrix)
         corrected_image = apply_correction(simulated_image, matrix)
 
-        # Display Images Side-by-Side (Ensuring Horizontal Layout)
+        # Display Results
         col1, col2 = st.columns([1, 1])
-
         with col1:
             st.image(simulated_image, caption=f"{blindness_type} (Simulated)", width=display_width)
-
         with col2:
-            st.image(corrected_image, caption=f"{blindness_type}", width=display_width)
+            st.image(corrected_image, caption=f"{blindness_type} (Corrected)", width=display_width)
